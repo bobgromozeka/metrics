@@ -5,4 +5,5 @@ type StartupConfig struct {
 	StoreInterval   uint
 	FileStoragePath string
 	Restore         bool
+	DatabaseDsn     string
 }

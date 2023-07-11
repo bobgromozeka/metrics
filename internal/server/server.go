@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 
+	"github.com/bobgromozeka/metrics/internal/server/db"
 	"github.com/bobgromozeka/metrics/internal/server/handlers"
 	"github.com/bobgromozeka/metrics/internal/server/middlewares"
 	"github.com/bobgromozeka/metrics/internal/server/storage"
@@ -33,11 +34,13 @@ func new(s storage.Storage) *chi.Mux {
 			r.Get("/", handlers.GetAll(s))
 		},
 	)
+	r.Get("/ping", handlers.Ping)
 
 	return r
 }
 
 func Start(startupConfig StartupConfig) error {
+	db.Connect(startupConfig.DatabaseDsn)
 	s := storage.New()
 	s = storage.NewPersistenceStorage(
 		s, storage.PersistenceSettings{
