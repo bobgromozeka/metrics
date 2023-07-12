@@ -17,10 +17,10 @@ func Get(s storage.Storage) http.HandlerFunc {
 		metricsType := chi.URLParam(r, "type")
 		metricsName := chi.URLParam(r, "name")
 
-		m, ok := s.GetMetricsByType(metricsType, metricsName)
+		m, err := s.GetMetricsByType(r.Context(), metricsType, metricsName)
 
 		w.Header().Set("Content-Type", "text/html")
-		if !ok {
+		if err != nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -47,15 +47,15 @@ func GetJSON(s storage.Storage) http.HandlerFunc {
 		}
 
 		if requestMetrics.MType == metrics.CounterType {
-			val, ok := s.GetCounterMetrics(requestMetrics.ID)
-			if !ok {
+			val, err := s.GetCounterMetrics(r.Context(), requestMetrics.ID)
+			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			requestMetrics.Delta = &val
 		} else {
-			val, ok := s.GetGaugeMetrics(requestMetrics.ID)
-			if !ok {
+			val, err := s.GetGaugeMetrics(r.Context(), requestMetrics.ID)
+			if err != nil {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}

@@ -29,10 +29,13 @@ func Update(s storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		_, err := s.UpdateMetricsByType(metricsType, metricsName, metricsValue)
+		_, err := s.UpdateMetricsByType(r.Context(), metricsType, metricsName, metricsValue)
 
 		if err != nil {
-			log.Printf("Could not update metrics: [type: %s, name: %s, value: %s]: %s ", metricsType, metricsName, metricsValue, err)
+			log.Printf(
+				"Could not update metrics: [type: %s, name: %s, value: %s]: %s ", metricsType, metricsName,
+				metricsValue, err,
+			)
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -63,7 +66,13 @@ func UpdateJSON(s storage.Storage) http.HandlerFunc {
 			} else {
 				delta = *requestMetrics.Delta
 			}
-			newValue := s.AddCounter(requestMetrics.ID, delta)
+			newValue, err := s.AddCounter(r.Context(), requestMetrics.ID, delta)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
 			requestMetrics.Delta = &newValue
 		} else {
 			var value float64
@@ -72,7 +81,13 @@ func UpdateJSON(s storage.Storage) http.HandlerFunc {
 			} else {
 				value = *requestMetrics.Value
 			}
-			newValue := s.SetGauge(requestMetrics.ID, value)
+			newValue, err := s.SetGauge(r.Context(), requestMetrics.ID, value)
+			if err != nil {
+				log.Println(err)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
 			requestMetrics.Value = &newValue
 		}
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/bobgromozeka/metrics/internal/server/storage"
@@ -9,8 +10,13 @@ import (
 
 func GetAll(s storage.Storage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		gaugeMetrics := s.GetAllGaugeMetrics()
-		counterMetrics := s.GetAllCounterMetrics()
+		gaugeMetrics, gErr := s.GetAllGaugeMetrics(r.Context())
+		counterMetrics, cErr := s.GetAllCounterMetrics(r.Context())
+		if gErr != nil || cErr != nil {
+			log.Println(gErr, cErr)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
 
 		response := ""
 
