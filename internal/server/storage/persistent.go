@@ -1,18 +1,13 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"time"
 )
-
-type PersistenceSettings struct {
-	Path     string
-	Interval uint
-	Restore  bool
-}
 
 type PersistentStorage struct {
 	Storage
@@ -32,7 +27,13 @@ func NewPersistenceStorage(s Storage, config PersistenceSettings) Storage {
 			if restoreErr != nil {
 				log.Println("Could not restore data from file: ", restoreErr)
 			} else {
-				ps.SetMetrics(data)
+				if cErr := ps.AddCounters(context.Background(), data.Counter); cErr != nil {
+					log.Println("Could not populate counters with restored data:", cErr)
+				}
+
+				if gErr := ps.SetGauges(context.Background(), data.Gauge); gErr != nil {
+					log.Println("Could not populate gauges with restored data:", gErr)
+				}
 			}
 		}
 
@@ -51,31 +52,39 @@ func NewPersistenceStorage(s Storage, config PersistenceSettings) Storage {
 	return ps
 }
 
-func (s *PersistentStorage) SetGauge(name string, value float64) float64 {
-	res := s.Storage.SetGauge(name, value)
+func (s *PersistentStorage) SetGauge(ctx context.Context, name string, value float64) (float64, error) {
+	res, err := s.Storage.SetGauge(ctx, name, value)
 
 	if s.syncPersisting {
 		s.persist()
 	}
 
-	return res
+	return res, err
 }
 
-func (s *PersistentStorage) AddCounter(name string, value int64) int64 {
-	res := s.Storage.AddCounter(name, value)
+func (s *PersistentStorage) AddCounter(ctx context.Context, name string, value int64) (int64, error) {
+	res, err := s.Storage.AddCounter(ctx, name, value)
 
 	if s.syncPersisting {
 		s.persist()
 	}
 
-	return res
+	return res, err
 }
 
 func (s *PersistentStorage) persist() {
+	ctx := context.Background()
+	gm, gErr := s.GetAllGaugeMetrics(ctx)
+	cm, cErr := s.GetAllCounterMetrics(ctx)
+	if gErr != nil || cErr != nil {
+		log.Println("Could not get one of metrics with error: ", cErr, gErr)
+		return
+	}
+
 	err := persistToPath(
 		s.persistencePath, Metrics{
-			Gauge:   s.GetAllGaugeMetrics(),
-			Counter: s.GetAllCounterMetrics(),
+			Gauge:   gm,
+			Counter: cm,
 		},
 	)
 	if err != nil {

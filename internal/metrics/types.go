@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"strconv"
-	"strings"
 )
 
 type Gauge = float64
@@ -59,6 +58,6 @@ func IsValidValue(metricsType string, value string) bool {
 }
 
 func IsValidType(metricsType string) bool {
-	_, ok := validNames[strings.ToLower(metricsType)]
+	_, ok := validNames[metricsType]
 	return ok
 }

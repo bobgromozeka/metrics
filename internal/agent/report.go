@@ -16,24 +16,31 @@ func reportToServer(serverAddr string, rm runtimeMetrics) {
 
 	payloads := makeBodiesFromStructure(rm)
 
-	client := resty.New()
-	for _, payload := range payloads {
-		encodedPayload, err := json.Marshal(payload)
-		if err != nil {
-			log.Println("Could not encode request: ", err)
-			continue
-		}
-		gzippedPayload, gzErr := helpers.Gzip(encodedPayload)
-		if gzErr != nil {
-			log.Println("Could not gzip request: ", gzErr)
-			continue
-		}
-		_, _ = client.R().
-			SetHeader("Content-Type", "application/json").
-			SetHeader("Content-Encoding", "gzip").
-			SetBody(gzippedPayload).
-			Post(serverAddr + "/update")
+	if len(payloads) < 1 {
+		return
 	}
+
+	client := resty.New()
+
+	encodedPayload, err := json.Marshal(payloads)
+	if err != nil {
+		log.Println("Could not encode request: ", err)
+		return
+	}
+
+	gzippedPayload, gzErr := helpers.Gzip(encodedPayload)
+	if gzErr != nil {
+		log.Println("Could not gzip request: ", gzErr)
+		return
+	}
+
+	_, _ = client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Content-Encoding", "gzip").
+		SetHeader("Accept-Encoding", "gzip").
+		SetBody(gzippedPayload).
+		Post(serverAddr + "/updates")
+
 }
 
 func makeBodiesFromStructure(rm any) []metrics.RequestPayload {
